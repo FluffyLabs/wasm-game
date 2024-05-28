@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Write};
 
 type Index = u8;
 type RawState = [RawRow; 256];
@@ -47,14 +47,18 @@ impl StateOps {
             let (max_part_index, max_bit) = Self::part_and_bit_index(size);
             for part_index in 0..=max_part_index {
                 let mut part = row[part_index];
-                let max = if part_index < max_part_index { ROW_PART_SIZE } else { max_bit };
+                let max = if part_index < max_part_index {
+                    ROW_PART_SIZE
+                } else {
+                    max_bit
+                };
                 for _ in 0..max {
-                    write!(f, "{:b}", part & 0b1)?;
+                    f.write_char(if part & 0b1 > 0 { '•' } else { '▢' })?;
                     part >>= 1;
                 }
             }
+            writeln!(f, "")?;
         }
-        writeln!(f, "")?;
         Ok(())
     }
 
@@ -193,5 +197,23 @@ mod tests {
         // then
         let cell = board.row(3).cell(2);
         assert_eq!(cell, State::Lit);
+    }
+
+    #[test]
+    fn should_debug_board_properly() {
+        let board = Board::new(5);
+
+        let view = format!("\n{:?}", board);
+
+        assert_eq!(
+            view,
+            r#"
+••▢▢▢
+••▢▢▢
+••▢▢▢
+••▢▢▢
+••▢▢▢
+Board { size: 5 }"#
+        );
     }
 }
