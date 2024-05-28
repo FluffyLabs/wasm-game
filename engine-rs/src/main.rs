@@ -10,9 +10,15 @@ struct StateOps;
 impl StateOps {
     pub fn initial(size: Index) -> RawState {
         let mut state = [[0u64; 4]; 256];
+        let is_size_odd = size % 2 > 0;
         for row_index in 0..size {
             let row = &mut state[row_index as usize];
-            for cell_index in 0..size / 2 {
+            let max_cell_to_lit = if is_size_odd && row_index % 2 > 0 {
+                size / 2 + 1
+            } else {
+                size / 2
+            };
+            for cell_index in 0..max_cell_to_lit {
                 let (part_index, bit_index) = Self::part_and_bit_index(cell_index);
                 let cell = 1 << bit_index;
                 row[part_index] += cell;
@@ -42,8 +48,8 @@ impl StateOps {
     }
 
     fn debug(f: &mut fmt::Formatter, size: Index, state: &RawState) -> fmt::Result {
-        for row_index in 0..size as usize {
-            let row = state[row_index];
+        for row_index in 0..size {
+            let row = state[row_index as usize];
             let (max_part_index, max_bit) = Self::part_and_bit_index(size);
             for part_index in 0..=max_part_index {
                 let mut part = row[part_index];
@@ -64,8 +70,8 @@ impl StateOps {
 
     fn flip(row: &mut RawRow, cell_index: Index) {
         let (part_index, bit_index) = Self::part_and_bit_index(cell_index);
-        let part = &mut row[part_index];
         let cell = 1 << bit_index;
+        let part = &mut row[part_index];
         *part = *part ^ cell;
     }
 
@@ -169,12 +175,15 @@ mod tests {
 
     #[test]
     fn should_set_initial_state() {
-        for size in [4, 8, 16, 64, 128, 255] {
+        for size in [4, 8, 9, 16, 64, 128, 255] {
             let board = Board::new(size);
             for i in 0..size {
                 let r0 = board.row(i);
                 for j in 0..size {
                     let state = if j < size / 2 {
+                        State::Lit
+                    // in case of odd size, every odd row has one more cell lit.
+                    } else if j == size / 2 && i % 2 == 1 && size % 2 == 1 {
                         State::Lit
                     } else {
                         State::Dark
@@ -209,9 +218,9 @@ mod tests {
             view,
             r#"
 ••▢▢▢
+•••▢▢
 ••▢▢▢
-••▢▢▢
-••▢▢▢
+•••▢▢
 ••▢▢▢
 Board { size: 5 }"#
         );
