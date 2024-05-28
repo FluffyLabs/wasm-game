@@ -59,7 +59,7 @@ impl StateOps {
                     max_bit
                 };
                 for _ in 0..max {
-                    f.write_char(if part & 0b1 > 0 { '•' } else { '▢' })?;
+                    f.write_char(if part & 0b1 > 0 { '▣' } else { '▢' })?;
                     part >>= 1;
                 }
             }
@@ -217,11 +217,11 @@ mod tests {
         assert_eq!(
             view,
             r#"
-••▢▢▢
-•••▢▢
-••▢▢▢
-•••▢▢
-••▢▢▢
+▣▣▢▢▢
+▣▣▣▢▢
+▣▣▢▢▢
+▣▣▣▢▢
+▣▣▢▢▢
 Board { size: 5 }"#
         );
     }
