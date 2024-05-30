@@ -75,7 +75,10 @@ impl Board {
     /// Flip the cell state at given row and column index.
     pub fn flip(&mut self, row_index: Index, col_index: Index) {
         assert!(row_index < self.size, "The row index is beyond board size.");
-        assert!(col_index < self.size, "The column index is beyond board size.");
+        assert!(
+            col_index < self.size,
+            "The column index is beyond board size."
+        );
         let row = StateOps::row_mut(&mut self.state, row_index);
         StateOps::flip(row, col_index);
     }
@@ -93,7 +96,10 @@ impl<'a> Row<'a> {
     ///
     /// Panics in case the column index is greater than the size of the game board.
     pub fn cell(&self, col_index: Index) -> State {
-        assert!(col_index < self.board.size, "The column index is beyond board size.");
+        assert!(
+            col_index < self.board.size,
+            "The column index is beyond board size."
+        );
         StateOps::cell(self.row, col_index)
     }
 }

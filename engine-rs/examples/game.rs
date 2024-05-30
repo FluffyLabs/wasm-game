@@ -1,12 +1,15 @@
 use engine_rs::board::State;
-use sdl2::video::Window;
-use sdl2::{pixels::Color, render::Canvas};
-use sdl2::rect::{Point, Rect};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::rect::{Point, Rect};
+use sdl2::video::Window;
+use sdl2::{pixels::Color, render::Canvas};
 use std::time;
 
-use engine_rs::{board::Board, game::{game_loop, Game, Position}};
+use engine_rs::{
+    board::Board,
+    game::{game_loop, Game, Position},
+};
 
 fn main() -> Result<(), String> {
     // sdl init
@@ -28,7 +31,10 @@ fn main() -> Result<(), String> {
 
     // game init
     let board = Board::new(16);
-    let viewport_size = Position { x: size as f32, y: size as f32 };
+    let viewport_size = Position {
+        x: size as f32,
+        y: size as f32,
+    };
     let start_time = time::Instant::now();
     let mut game = Game::new(board, 0, viewport_size);
 
@@ -39,10 +45,13 @@ fn main() -> Result<(), String> {
         // process events
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit {..} |
-                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                        break 'running;
-                    },
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => {
+                    break 'running;
+                }
                 _ => {}
             }
         }
@@ -59,7 +68,7 @@ fn main() -> Result<(), String> {
 
 fn render(
     canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-    game: &Game
+    game: &Game,
 ) -> Result<(), String> {
     canvas.clear();
 
@@ -89,18 +98,22 @@ fn render(
 
     canvas.set_draw_color(dark_color);
     let b = game.lit_ball();
-    draw_filled_circle(canvas, b.x as i32 , b.y as i32, ball_radius)?;
+    draw_filled_circle(canvas, b.x as i32, b.y as i32, ball_radius)?;
 
     canvas.set_draw_color(lit_color);
     let b = game.dark_ball();
-    draw_filled_circle(canvas, b.x as i32 , b.y as i32, ball_radius)?;
+    draw_filled_circle(canvas, b.x as i32, b.y as i32, ball_radius)?;
 
     canvas.present();
     Ok(())
 }
 
-
-fn draw_filled_circle(canvas: &mut Canvas<Window>, x0: i32, y0: i32, radius: i32) -> Result<(), String> {
+fn draw_filled_circle(
+    canvas: &mut Canvas<Window>,
+    x0: i32,
+    y0: i32,
+    radius: i32,
+) -> Result<(), String> {
     let mut x = radius;
     let mut y = 0;
     let mut radius_error = 1 - x;
@@ -123,7 +136,13 @@ fn draw_filled_circle(canvas: &mut Canvas<Window>, x0: i32, y0: i32, radius: i32
     Ok(())
 }
 
-fn draw_line(canvas: &mut Canvas<Window>, x1: i32, y1: i32, x2: i32, y2: i32) -> Result<(), String> {
+fn draw_line(
+    canvas: &mut Canvas<Window>,
+    x1: i32,
+    y1: i32,
+    x2: i32,
+    y2: i32,
+) -> Result<(), String> {
     canvas.draw_line(Point::new(x1, y1), Point::new(x2, y2))?;
     Ok(())
 }

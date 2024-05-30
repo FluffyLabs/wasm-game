@@ -9,6 +9,8 @@ pub struct Position {
     pub y: Coordinate,
 }
 
+const INITIAL_SPEED: u8 = 100;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Movement {
     angle: u16, // from 0 (right) to 359 clockwise
@@ -17,7 +19,7 @@ struct Movement {
 
 impl Movement {
     fn apply(&self, time_diff: f32, position: &mut Position) {
-        let position_diff = self.speed as f32 / 64.0 * time_diff / 40.0;
+        let position_diff = (self.speed as f32 / INITIAL_SPEED as f32) * time_diff / 2.0;
 
         let angle = self.angle as f32;
         let a_component = (self.angle % 90) as f32 / 90.0;
@@ -30,21 +32,18 @@ impl Movement {
             q if q >= 2.0 && q < 3.0 => (-a_component, -b_component),
             _ => (a_component, -b_component),
         };
-        
-        println!("Angle: {}, x_component: {}, y_component: {}", angle, x_component, y_component);
+
         position.x += position_diff * x_component;
         position.y += position_diff * y_component;
     }
 
     fn bounce(&mut self, collision_type: CollisionType) {
-        let before_angle = self.angle;
-        let speed_factor = self.speed as u16 * 3;
+        let speed_factor = self.speed as u16 * 3 / INITIAL_SPEED as u16;
         self.angle = match collision_type {
             CollisionType::Horizontal => (540 - self.angle + speed_factor) % 360,
             CollisionType::Vertical => (360 - self.angle + speed_factor) % 360,
         };
-
-        println!("Bounce! {} -> {}", before_angle, self.angle);
+        self.speed = (self.speed + 1).min(2 * INITIAL_SPEED);
     }
 }
 
@@ -60,7 +59,6 @@ pub struct Game {
 }
 
 impl Game {
-
     pub fn board(&self) -> &Board {
         &self.board
     }
@@ -77,28 +75,30 @@ impl Game {
         &self.cell_size
     }
 
-    pub fn new(
-        board: Board,
-        start_time: Timestamp,
-        viewport_size: Position,
-    ) -> Self {
+    pub fn new(board: Board, start_time: Timestamp, viewport_size: Position) -> Self {
         let half_view = Position {
             x: viewport_size.x / 2.0,
             y: viewport_size.y / 2.0,
         };
         let y = half_view.y;
 
-        let init_pos_dark = Position { x: half_view.x / 2.0 + half_view.x, y};
-        let init_pos_lit = Position { x: half_view.x / 2.0, y};
+        let init_pos_dark = Position {
+            x: half_view.x / 2.0 + half_view.x,
+            y,
+        };
+        let init_pos_lit = Position {
+            x: half_view.x / 2.0,
+            y,
+        };
 
         let movement_dark = Movement {
-            angle: 225,
-            speed: 1,
+            angle: 220,
+            speed: INITIAL_SPEED,
         };
 
         let movement_lit = Movement {
-            angle: 45,
-            speed: 1,
+            angle: 40,
+            speed: INITIAL_SPEED,
         };
 
         let cell_size = Position {
@@ -106,8 +106,14 @@ impl Game {
             y: viewport_size.y / board.size() as Coordinate,
         };
 
-        assert!(cell_size.x > 1.0, "The viewport size is too small to draw a cell");
-        assert!(cell_size.y > 1.0, "The viewport size is too small to draw a cell");
+        assert!(
+            cell_size.x > 1.0,
+            "The viewport size is too small to draw a cell"
+        );
+        assert!(
+            cell_size.y > 1.0,
+            "The viewport size is too small to draw a cell"
+        );
 
         let ball_radius = (cell_size.x + cell_size.y) / 4.0;
 
@@ -126,10 +132,11 @@ impl Game {
 pub fn game_loop(game: &mut Game, time: Timestamp) {
     assert!(time > game.time, "The time did not change!");
     let time_diff = (time - game.time) as f32;
-    
+    game.time = time;
+
     for (obj, kind) in [
         (&mut game.lit_ball, board::State::Lit),
-        (&mut game.dark_ball, board::State::Dark)
+        (&mut game.dark_ball, board::State::Dark),
     ] {
         // 1. move objects
         let (position, movement) = obj;
@@ -139,10 +146,17 @@ pub fn game_loop(game: &mut Game, time: Timestamp) {
         //  2.2. With boundaries
         //      2.2.1 bounce balls
         Collisions::boundaries(position, movement, game.ball_radius, &game.viewport_size);
-        //  2.1. With board items: 
+        //  2.1. With board items:
         //      2.1.1. flip board elements
         //      2.1.2. bounce balls
-        Collisions::board(position, movement, game.ball_radius, &game.cell_size, &mut game.board, kind);
+        Collisions::board(
+            position,
+            movement,
+            game.ball_radius,
+            &game.cell_size,
+            &mut game.board,
+            kind,
+        );
     }
 }
 
@@ -196,15 +210,29 @@ impl Collisions {
 
                 let at_kind = board.cell(cell_y, cell_x);
                 if kind != at_kind {
-                    // flip the cell
-                    board.flip(cell_y, cell_x);
-                    let cell_pos_x  = cell_x as f32 * cell_size.x;
-                    let cell_pos_y = cell_y as f32 * cell_size.y;
-                    collision_type = if (cell_pos_x - position.x).abs() < (cell_pos_y - position.y).abs() {
-                        Some(CollisionType::Horizontal)
-                    } else {
-                        Some(CollisionType::Vertical)
-                    };
+                    // check if it's actually colliding
+                    let cell_center_x = (cell_x as f32 + 0.5) * cell_size.x;
+                    let cell_center_y = (cell_y as f32 + 0.5) * cell_size.y;
+
+                    let distance_x = (cell_center_x - position.x).abs();
+                    let distance_y = (cell_center_y - position.y).abs();
+
+                    let distance_sq = distance_x * distance_x + distance_y * distance_y;
+                    let cell_size_avg = (cell_size.x + cell_size.y) / 4.0;
+                    let max_distance = cell_size_avg * 0.95 + ball_radius;
+                    let max_distance_sq = max_distance * max_distance;
+
+                    if distance_sq < max_distance_sq {
+                        // flip the cell
+                        board.flip(cell_y, cell_x);
+                        collision_type = if (cell_center_x - position.x).abs()
+                            < (cell_center_y - position.y).abs()
+                        {
+                            Some(CollisionType::Vertical)
+                        } else {
+                            Some(CollisionType::Horizontal)
+                        };
+                    }
                 }
             }
         }
@@ -220,7 +248,6 @@ enum CollisionType {
     Vertical,
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -233,16 +260,13 @@ mod tests {
             (30, 150),
             (65, 115),
             (89, 91),
-            (90, 90), //edge case?
+            (90, 90),   //edge case?
             (270, 270), //edge case?
             (105, 75),
         ];
 
         for (angle, expected) in values {
-            let mut mov = Movement {
-                angle,
-                speed: 0,
-            };
+            let mut mov = Movement { angle, speed: 0 };
             // when
             mov.bounce(CollisionType::Horizontal);
 
@@ -255,15 +279,14 @@ mod tests {
     fn should_calculate_vertical_bounce_angle_correctly() {
         let values = vec![
             (90, 270),
-            (0, 0), //edge case?
-            (180, 180), //edge case?
+            (0, 0),     //edge case?
+            (180, 180), //edge case?,
+            (120, 240),
+            (280, 80),
         ];
 
         for (angle, expected) in values {
-            let mut mov = Movement {
-                angle,
-                speed: 0,
-            };
+            let mut mov = Movement { angle, speed: 0 };
             // when
             mov.bounce(CollisionType::Vertical);
 
@@ -272,4 +295,35 @@ mod tests {
         }
     }
 
+    #[test]
+    fn should_not_find_collisions() {
+        let kind = board::State::Lit;
+        let ball_radius = 10f32;
+
+        let cell_size = Position { x: 10.0, y: 10.0 };
+        let mut position = Position { x: 10.0, y: 15.0 };
+
+        let mut movement = Movement {
+            angle: 90,
+            speed: 1,
+        };
+        let mut board = Board::new(5);
+
+        // we are only touching Lit board cells,
+        // so there should be no collisions.
+        // However bounding rectangle is touching cells at (2,0) and (2,2)
+        // hence we are testing if these collisions are omitted.
+        Collisions::board(
+            &mut position,
+            &mut movement,
+            ball_radius,
+            &cell_size,
+            &mut board,
+            kind,
+        );
+
+        // no change
+        assert_eq!(movement.angle, 90);
+        assert_eq!(movement.speed, 1);
+    }
 }
