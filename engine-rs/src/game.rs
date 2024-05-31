@@ -18,8 +18,8 @@ struct Movement {
 }
 
 impl Movement {
-    fn apply(&self, time_diff: f32, position: &mut Position) {
-        let position_diff = (self.speed as f32 / INITIAL_SPEED as f32) * time_diff / 2.0;
+    fn apply(&self, time_diff_ms: f32, position: &mut Position) {
+        let position_diff = (self.speed as f32 / INITIAL_SPEED as f32) * time_diff_ms / 2.0;
 
         let angle = self.angle as f32;
         let a_component = (self.angle % 90) as f32 / 90.0;
@@ -75,7 +75,7 @@ impl Game {
         &self.cell_size
     }
 
-    pub fn new(board: Board, start_time: Timestamp, viewport_size: Position) -> Self {
+    pub fn new(board: Board, start_time_ms: Timestamp, viewport_size: Position) -> Self {
         let half_view = Position {
             x: viewport_size.x / 2.0,
             y: viewport_size.y / 2.0,
@@ -119,7 +119,7 @@ impl Game {
 
         Self {
             board,
-            time: start_time,
+            time: start_time_ms,
             viewport_size,
             cell_size,
             ball_radius,
@@ -129,10 +129,10 @@ impl Game {
     }
 }
 
-pub fn game_loop(game: &mut Game, time: Timestamp) {
-    assert!(time > game.time, "The time did not change!");
-    let time_diff = (time - game.time) as f32;
-    game.time = time;
+pub fn game_loop(game: &mut Game, time_ms: Timestamp) {
+    assert!(time_ms > game.time, "The time did not change!");
+    let time_diff_ms = (time_ms - game.time) as f32;
+    game.time = time_ms;
 
     for (obj, kind) in [
         (&mut game.lit_ball, board::State::Lit),
@@ -140,7 +140,7 @@ pub fn game_loop(game: &mut Game, time: Timestamp) {
     ] {
         // 1. move objects
         let (position, movement) = obj;
-        movement.apply(time_diff, position);
+        movement.apply(time_diff_ms, position);
 
         // 2. check collisions:
         //  2.2. With boundaries
