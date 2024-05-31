@@ -8,7 +8,7 @@ use std::time;
 
 use engine_rs::{
     board::Board,
-    game::{game_loop, Game, Position},
+    game::{Game, Position},
 };
 
 fn main() -> Result<(), String> {
@@ -58,7 +58,7 @@ fn main() -> Result<(), String> {
 
         // process the game
         let new_time = time::Instant::now().duration_since(start_time).as_millis();
-        game_loop(&mut game, new_time as u64);
+        game.tick(new_time as u64);
 
         render(&mut canvas, &game)?;
     }

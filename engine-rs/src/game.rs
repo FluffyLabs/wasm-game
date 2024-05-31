@@ -1,11 +1,33 @@
+//! Game physics.
+//!
+//! The components here are responsible for moving objects
+//! over the board. In particular we track:
+//! 1. The "lit" ball.
+//! 2. The "dark" ball.
+//!
+//! Since collisions and physics are tightly coupled with
+//! how objects are going to be rendered, this part of the
+//! code is aware of the sizes of objects within the coordinate space.
 use crate::board::{self, Board};
 
+/// Space coordinate type.
+///
+/// (0, 0) is as a top-left corner of the space.
+/// Physics is calculated using floating point operations,
+/// but obviously the rendering needs to project these points
+/// into solid pixels, however obviously the rendering resolution
+/// might be higher / lower than the physics resolution.
 pub type Coordinate = f32;
+
+/// Timestamp type (milliseconds).
 pub type Timestamp = u64;
 
+/// Position or dimensions of some object on the screen within the coordinate space.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Position {
+    /// `x` coordinate of the position.
     pub x: Coordinate,
+    /// `y` coordinate of the position.
     pub y: Coordinate,
 }
 
@@ -13,11 +35,20 @@ const INITIAL_SPEED: u8 = 100;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Movement {
-    angle: u16, // from 0 (right) to 359 clockwise
+    /// Movement angle from 0 (right) to 359 clockwise.
+    angle: u16,
+    /// Speed of movement (see also [`INITIAL_SPEED`]).
+    ///
+    /// The speed should be roughly between `INITIAL_SPEED` and `2 * INITIAL_SPEED`.
     speed: u8,
 }
 
 impl Movement {
+    /// Apply the movement to given position.
+    ///
+    /// The method will alter the next position the object is at.
+    /// Note we do not take boundaries or other objects into account here,
+    /// so the new position might be out of bounds.
     fn apply(&self, time_diff_ms: f32, position: &mut Position) {
         let position_diff = (self.speed as f32 / INITIAL_SPEED as f32) * time_diff_ms / 2.0;
 
@@ -37,6 +68,10 @@ impl Movement {
         position.y += position_diff * y_component;
     }
 
+    /// Reflect the movement, after the object has hit some obstacle.
+    ///
+    /// The rebound angle is matching the approach angle, however
+    /// there is slight (deterministic) skew based on the speed of the object.
     fn bounce(&mut self, collision_type: CollisionType) {
         let speed_factor = self.speed as u16 * 3 / INITIAL_SPEED as u16;
         self.angle = match collision_type {
@@ -47,6 +82,7 @@ impl Movement {
     }
 }
 
+/// Main game object encapsulating all parts of the game.
 #[derive(Debug)]
 pub struct Game {
     board: Board,
@@ -59,22 +95,30 @@ pub struct Game {
 }
 
 impl Game {
+    /// View the board state.
     pub fn board(&self) -> &Board {
         &self.board
     }
 
+    /// Get the position of the lit ball.
     pub fn lit_ball(&self) -> &Position {
         &self.lit_ball.0
     }
 
+    /// Get the position of the dark ball.
     pub fn dark_ball(&self) -> &Position {
         &self.dark_ball.0
     }
 
+    /// Get the board cell size in coordinate space.
     pub fn cell_size(&self) -> &Position {
         &self.cell_size
     }
 
+    /// Create new game object.
+    ///
+    /// Given coordinate space dimensions (viewport size), the underlying
+    /// board and the starting time in milliseconds.
     pub fn new(board: Board, start_time_ms: Timestamp, viewport_size: Position) -> Self {
         let half_view = Position {
             x: viewport_size.x / 2.0,
@@ -127,36 +171,37 @@ impl Game {
             dark_ball: (init_pos_dark, movement_dark),
         }
     }
-}
 
-pub fn game_loop(game: &mut Game, time_ms: Timestamp) {
-    assert!(time_ms > game.time, "The time did not change!");
-    let time_diff_ms = (time_ms - game.time) as f32;
-    game.time = time_ms;
+    /// Recalculate objects positions and check collisions.
+    pub fn tick(&mut self, time_ms: Timestamp) {
+        assert!(time_ms > self.time, "The time did not change!");
+        let time_diff_ms = (time_ms - self.time) as f32;
+        self.time = time_ms;
 
-    for (obj, kind) in [
-        (&mut game.lit_ball, board::State::Lit),
-        (&mut game.dark_ball, board::State::Dark),
-    ] {
-        // 1. move objects
-        let (position, movement) = obj;
-        movement.apply(time_diff_ms, position);
+        for (obj, kind) in [
+            (&mut self.lit_ball, board::State::Lit),
+            (&mut self.dark_ball, board::State::Dark),
+        ] {
+            // 1. move objects
+            let (position, movement) = obj;
+            movement.apply(time_diff_ms, position);
 
-        // 2. check collisions:
-        //  2.2. With boundaries
-        //      2.2.1 bounce balls
-        Collisions::boundaries(position, movement, game.ball_radius, &game.viewport_size);
-        //  2.1. With board items:
-        //      2.1.1. flip board elements
-        //      2.1.2. bounce balls
-        Collisions::board(
-            position,
-            movement,
-            game.ball_radius,
-            &game.cell_size,
-            &mut game.board,
-            kind,
-        );
+            // 2. check collisions:
+            //  2.2. With boundaries
+            //      2.2.1 bounce balls
+            Collisions::boundaries(position, movement, self.ball_radius, &self.viewport_size);
+            //  2.1. With board items:
+            //      2.1.1. flip board elements
+            //      2.1.2. bounce balls
+            Collisions::board(
+                position,
+                movement,
+                self.ball_radius,
+                &self.cell_size,
+                &mut self.board,
+                kind,
+            );
+        }
     }
 }
 

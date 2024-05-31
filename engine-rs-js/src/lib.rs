@@ -5,7 +5,10 @@
 //! The crate is compiled into WASM and tiny JS interface is exposed
 //! to calcualte the game physics and return objects to render on the JS side.
 
-use engine_rs::{board::Board, game::{game_loop, Game, Position}};
+use engine_rs::{
+    board::Board,
+    game::{Game, Position},
+};
 
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -26,14 +29,12 @@ impl WasmGame {
             y: viewport_y as _,
         };
         let game = Game::new(board, start_time_ms, viewport_size);
-    
-        Self {
-            game,
-        }
+
+        Self { game }
     }
 
     /// Recalculate objects positions and game physics.
     pub fn tick(&mut self, time_ms: u64) {
-        game_loop(&mut self.game, time_ms)
+        self.game.tick(time_ms)
     }
 }

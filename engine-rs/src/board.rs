@@ -1,9 +1,17 @@
+//! Game board definitions.
+//!
+//! The game board is indepdent from the flying balls,
+//! it is only responsible for maintaing the board state,
+//! i.e. which cells are lit or dark.
+
 use std::fmt::{self, Write};
 
-pub type Index = u8;
 type RawState = [RawRow; 256];
 type RawRow = [u64; 4];
 const ROW_PART_SIZE: usize = 64;
+
+/// Row/Column indexing type.
+pub type Index = u8;
 
 /// High level cell/ball state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
