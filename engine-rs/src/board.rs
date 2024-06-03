@@ -6,9 +6,10 @@
 
 use std::fmt::{self, Write};
 
-type RawState = [RawRow; 256];
-type RawRow = [u64; 4];
 const ROW_PART_SIZE: usize = 64;
+type RawRow = [u64; 4];
+/// Raw state info.
+pub type RawState = [RawRow; 256];
 
 /// Row/Column indexing type.
 pub type Index = u8;
@@ -66,6 +67,13 @@ impl Board {
     /// Return the size of the board.
     pub fn size(&self) -> Index {
         self.size
+    }
+
+    /// Get the raw state of the board.
+    ///
+    /// Note the raw state may be bigger than the actual `board_size`.
+    pub fn raw_state(&self) -> &RawState {
+        &self.state
     }
 
     /// Inspect a single raw of the game board.

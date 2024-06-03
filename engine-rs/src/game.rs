@@ -115,6 +115,11 @@ impl Game {
         &self.cell_size
     }
 
+    /// Get the ball radius.
+    pub fn ball_radius(&self) -> Coordinate {
+        self.ball_radius
+    }
+
     /// Create new game object.
     ///
     /// Given coordinate space dimensions (viewport size), the underlying
