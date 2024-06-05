@@ -1,0 +1,22 @@
+# Zig cache and output
+zig-out
+zig-cache
+
+# Build artifacts
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+
+# macOS specific files
+.DS_Store
+
+# Visual Studio Code specific files
+.vscode/
+
+# Temporary files
+*.tmp
+

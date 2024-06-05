@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Zig WASM Example</title>
+</head>
+<body>
+    <h1>Zig WASM Example</h1>
+    <script>
+        async function loadWasm() {
+            const response = await fetch('engine-zig-wasm.wasm');
+            const bytes = await response.arrayBuffer();
+            const result = await WebAssembly.instantiate(bytes, {
+                env: {
+                    print: (xx) => console.log(xx),
+                }
+            });
+            const { mul } = result.instance.exports;
+            console.log('5 + 7 =', mul(5, 7));
+        }
+        loadWasm();
+    </script>
+</body>
+</html>
