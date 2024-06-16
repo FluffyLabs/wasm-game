@@ -1,11 +1,8 @@
-const std = @import("std");
+const Board = @import("Board.zig").Board;
 
-extern fn print(a: [*c]const u8) void;
-
-export fn mul(a: i32, b: i32) i32 {
-    return a * b;
-}
-
-pub export fn main() void {
-    print("Hello Debug!");
+pub export fn main() u8 {
+    var board = Board.init(16);
+    board.flip(12, 12);
+    board.print();
+    return 0;
 }
