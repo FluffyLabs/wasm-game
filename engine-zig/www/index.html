@@ -10,12 +10,41 @@
             const response = await fetch('engine-zig-wasm.wasm');
             const bytes = await response.arrayBuffer();
             const result = await WebAssembly.instantiate(bytes, {
-                env: {
-                    print: (xx) => console.log(xx),
-                }
+                env: {}
             });
-            const { mul } = result.instance.exports;
-            console.log('5 + 7 =', mul(5, 7));
+            const { wasm_game_new, wasm_game_tick, new_game_objects, wasm_game_fill, wasm_game_board_ptr } = result.instance.exports;
+
+            let previous_time = time() - BigInt(1);
+            const game = wasm_game_new(16, 256, 256, previous_time);
+            const objects = new_game_objects();
+
+            function time() {
+                return BigInt(Date.now())
+            }
+
+            function tick() {
+                const current_time = time();
+                if (previous_time < current_time) {
+                    wasm_game_tick(game, current_time);
+                    previous_time = current_time;
+                }
+            }
+
+            function render() {
+                wasm_game_fill(game, objects);
+                const board_state = wasm_game_board_ptr();
+                console.log(objects, board_state);
+            }
+
+            function tickAndRender() {
+                tick();
+                render();
+
+                requestAnimationFrame(tickAndRender);
+            }
+
+            // start the whole thing
+            requestAnimationFrame(tickAndRender);
         }
         loadWasm();
     </script>

@@ -82,6 +82,7 @@ const tick = () => {
   const current_time = time();
   if (previous_time < current_time) {
     game.tick(current_time);
+    previous_time = current_time;
   }
 };
 
